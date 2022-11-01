@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import sys
 
+from anytree import Node, RenderTree
 from operator import itemgetter
 	
 def genMaze(x: int, y : int) -> np.array:
@@ -111,58 +112,50 @@ def waterSplash(maze: np.array, x: int, y: int) -> np.array:
         
 def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int) -> tuple:
     l: np.array = np.copy(maze)
-    l[l>1] = 1
-
-    def solver(w: int, z: int) -> bool:
+    l[0][0] = -1
+    l[y*2-2][x*2-2] = 1
+    tree = [Node((0,0,0)),]
+    
+    def solve(w : int, z: int, parent: Node):
         if w == y*2-2 and z == x*2-2:
-            l[w][z] = 3
+            l[w][z] = -1
             return True
-        r = []
         if w+1 < 2*y-1:
-            r.append(("u", waterSplashed[w+1][z]))
+            if l[w+1][z] > 0:
+                tree.append(Node((w+1,z,parent.name[2] + l[w+1][z]), parent = parent))
+                l[w+1][z] = -1
+                if solve(w+1,z,tree[-1]):
+                    return True
         if w-1 >= 0:
-            r.append(("d", waterSplashed[w-1][z]))
+            if l[w-1][z] > 0:
+                tree.append(Node((w-1,z,parent.name[2] + l[w-1][z]), parent = parent))
+                l[w-1][z] = -1
+                if solve(w-1,z,tree[-1]):
+                    return True
         if z+1 < 2*x-1:
-            r.append(("r", waterSplashed[w][z+1]))
+            if l[w][z+1] > 0:
+                tree.append(Node((w,z+1,parent.name[2] + l[w][z+1]), parent = parent))
+                l[w][z+1] = -1
+                if solve(w,z+1,tree[-1]):
+                    return True
         if z-1 >= 0:
-            r.append(("l", waterSplashed[w][z-1]))
+            if l[w][z-1] > 0:
+                tree.append(Node((w,z-1,parent.name[2] + l[w][z-1]), parent = parent))
+                l[w][z-1] = -1
+                if solve(w,z-1,tree[-1]):
+                    return True
+                
+    solve(0,0,tree[0])
+    for pre, fill, node in RenderTree(tree[0]):
+        print("%s%s" % (pre, node.name))
 
-        r: list = sorted(r, key=itemgetter(1))
-        index: int = 0
-        while index < len(r):
-            if r[index][0] == "u":
-                if l[w+1][z] == 1:
-                    l[w+1][z] = 2
-                    if solver(w+1,z):
-                        l[w][z] = 3
-                        return True
-            elif r[index][0] == "d":
-                if l[w-1][z] == 1:
-                    l[w-1][z] = 2
-                    if solver(w-1,z):
-                        l[w][z] = 3
-                        return True
-            elif r[index][0] == "r":
-                if l[w][z+1] == 1:
-                    l[w][z+1] = 2
-                    if solver(w,z+1):
-                        l[w][z] = 3
-                        return True
-            else:
-                if l[w][z-1] == 1:
-                    l[w][z-1] = 2
-                    if solver(w,z-1):
-                        l[w][z] = 3
-                        return True
-            index += 1
-        return False
+    l[l==-1] = 15
+    print(l)
+    return (l, 0)
+
+        
+            
     
-    l[0][0] = 2
-    solver(0,0)
-    
-    l[l==2] = 1
-    l[l==3] = 2
-    return (l, np.count_nonzero(l==2))
 
 def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y:int):
     xv: list = np.linspace(0,2*x,2*x+1)
@@ -189,13 +182,11 @@ def main():
 
     # Note that maze will be 2*x wide and 2*y height
     # IMPORTANT x*y should be not too much, because can be problem with shell and program execution (recursion)
-    x: int = 70
-    y: int = 30
+    x: int = 5
+    y: int = 5
 
-    if x<3:
-        x=3
-    if y<3:
-        y=3
+    x = max(x,3)
+    y = max(y,3)
     
     sys.setrecursionlimit(4*x*y)
 
