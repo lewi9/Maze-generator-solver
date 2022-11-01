@@ -64,7 +64,7 @@ def randMaze(maze: np.array, x: int, y:int, p:float) -> np.array:
             wallToDestroy-= 1
     return l
 
-def bushyMaze(maze: np.array, x: int, y:int) -> np.array:
+def bushyMaze(maze: np.array, x: int, y:int, weightCenter: int, weightOutsideCenter: int) -> np.array:
     l: np.array = np.copy(maze)
     centerFactor: int = 4
     outsideCenterFactor: int = 8
@@ -72,16 +72,19 @@ def bushyMaze(maze: np.array, x: int, y:int) -> np.array:
     centerBorderX: tuple = (int((2*x-1)/centerFactor),int((2*x-1)/centerFactor*(centerFactor-1)))
     outsideCenterBorderY: tuple = (int((2*y-1)/outsideCenterFactor),int((2*y-1)/outsideCenterFactor*(outsideCenterFactor-1)))
     outsideCenterBorderX: tuple = (int((2*x-1)/outsideCenterFactor),int((2*x-1)/outsideCenterFactor*(outsideCenterFactor-1)))
-    for i in range(centerBorderY[0], centerBorderY[1]):
-        for j in range(centerBorderX[0], centerBorderX[1]):
-            if l[i][j] > 0:
-                l[i][j] += 3
+    
     for i in range(outsideCenterBorderY[0], outsideCenterBorderY[1]):
         for j in range(outsideCenterBorderX[0], outsideCenterBorderX[1]):
             if l[i][j] > 0:
-                l[i][j] += 1
-    l[0][0] = 8
-    l[2*y-2][2*x-2] = 8
+                l[i][j] = weightOutsideCenter
+                
+    for i in range(centerBorderY[0], centerBorderY[1]):
+        for j in range(centerBorderX[0], centerBorderX[1]):
+            if l[i][j] > 0:
+                l[i][j] = weightCenter
+                
+    l[0][0] = (weightCenter + weightOutsideCenter) *2
+    l[2*y-2][2*x-2] = (weightCenter + weightOutsideCenter)*2
     return l
             
 def waterSplash(maze: np.array, x: int, y: int) -> np.array:
@@ -110,69 +113,105 @@ def waterSplash(maze: np.array, x: int, y: int) -> np.array:
     l[2*y-2][2*x-2] = 0
     return l
         
-def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int) -> tuple:
+def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int, weightSum: int = 1) -> tuple:
     l: np.array = np.copy(maze)
-    l[0][0] = -1
+    l[0][0] = -2
     l[y*2-2][x*2-2] = 1
-    tree = [Node((0,0,0)),]
+    tree: list = [Node([0, 0, waterSplashed[0][0], 0]),]
     
-    def solve(w : int, z: int, parent: Node):
-        if w == y*2-2 and z == x*2-2:
-            l[w][z] = -1
-            return True
-        
-        r = []
-        if w+1 < 2*y-1:
-            r.append(("u", waterSplashed[w+1][z]))
-        if w-1 >= 0:
-            r.append(("d", waterSplashed[w-1][z]))
-        if z+1 < 2*x-1:
-            r.append(("r", waterSplashed[w][z+1]))
-        if z-1 >= 0:
-            r.append(("l", waterSplashed[w][z-1]))
+    def solve() -> tuple:
+        def findMinimumNodeMove() -> list:
+            leaves: list = list(tree[0].leaves)
+            leavesName: list = [node.name for node in leaves]
 
-        r: list = sorted(r, key=itemgetter(1))
-        index: int = 0
+            minValue: int = min(leavesName, key=itemgetter(2))
+            minIndex: int = leavesName.index(minValue)
+            
+            node: Node = leaves[minIndex]
+            
+            w: int = node.name[0]
+            z: int = node.name[1]
+            value: int = node.name[2]
+            cost: int = node.name[3]
+
+            if w == y*2-2 and z == x*2-2:
+                return [[], w, z, value, cost, node]
+            
+            r = []
+            if w+1 < 2*y-1:
+                if l[w+1][z] > 0:
+                    r.append(("u", waterSplashed[w+1][z] + cost + l[w+1][z]))
+            if w-1 >= 0:
+                if l[w-1][z] > 0:
+                    r.append(("d", waterSplashed[w-1][z] + cost + l[w-1][z]))
+            if z+1 < 2*x-1:
+                if l[w][z+1] > 0:
+                    r.append(("r", waterSplashed[w][z+1] + cost + l[w][z+1]))
+            if z-1 >= 0:
+                if l[w][z-1] > 0:   
+                    r.append(("l", waterSplashed[w][z-1] + cost + l[w][z-1]))
+
+            if len(r) == 0:
+                tree.remove(node)
+                node.parent = None
+                return findMinimumNodeMove()
+
+            return [r, w, z, value, cost, node]
+
+        r, w, z, value, cost, node = findMinimumNodeMove()
         
+        if w == y*2-2 and z == x*2-2:
+                l[w][z] = -2
+                return (True, value)
+            
+        r = sorted(r, key=itemgetter(1))
+        index: int = 0
         while index < len(r):
             if r[index][0] == "u":
-                if l[w+1][z] > 0:
-                    tree.append(Node((w+1,z,parent.name[2] + l[w+1][z]), parent = parent))
-                    l[w+1][z] = -1
-                    if solve(w+1,z,tree[-1]):
-                        return True
+                tree.append(Node([w+1, z, r[index][1], cost + l[w+1][z]], parent = node))
+                l[w+1][z] = -1
+                effect = solve()
+                if effect[0]:
+                    return (True, effect[1])
             elif r[index][0] == "d":
-                if l[w-1][z] > 0:
-                    tree.append(Node((w-1,z,parent.name[2] + l[w-1][z]), parent = parent))
-                    l[w-1][z] = -1
-                    if solve(w-1,z,tree[-1]):
-                        return True
+                tree.append(Node([w-1, z, r[index][1], cost + l[w-1][z]], parent = node))
+                l[w-1][z] = -1
+                effect = solve()
+                if effect[0]:
+                    return (True, effect[1])
             elif r[index][0] == "r":
-                if l[w][z+1] > 0:
-                    tree.append(Node((w,z+1,parent.name[2] + l[w][z+1]), parent = parent))
-                    l[w][z+1] = -1
-                    if solve(w,z+1,tree[-1]):
-                        return True
+                tree.append(Node([w, z+1, r[index][1], cost + l[w][z+1]], parent = node))
+                l[w][z+1] = -1
+                effect = solve()
+                if effect[0]:
+                    return (True, effect[1])    
             else:
-                if l[w][z-1] > 0:
-                    tree.append(Node((w,z-1,parent.name[2] + l[w][z-1]), parent = parent))
-                    l[w][z-1] = -1
-                    if solve(w,z-1,tree[-1]):
-                        return True
+                tree.append(Node([w, z-1, r[index][1], cost + l[w][z-1]], parent = node))
+                l[w][z-1] = -1
+                effect = solve()
+                if effect[0]:
+                    return (True, effect[1])
             index += 1
-        return False
-                    
-    solve(0,0,tree[0])
-    for pre, fill, node in RenderTree(tree[0]):
-        print("%s%s" % (pre, node.name))
-
-    l[l==-1] = 15
-    print(l)
-    return (l, 0)
-
-        
-            
+        return (False, None)
     
+    n: int = solve()[1]
+
+    def markRoad(node: Node) -> None:
+        l[node.name[0]][node.name[1]] = -2
+        if node.parent:
+            markRoad(node.parent)
+
+    markRoad(tree[-1])
+
+    
+    for i in range(2*y-1):
+        for j in range(2*x-1):
+            if l[i][j] == -1:
+                l[i][j] = maze[i][j]
+                
+    l[l==-2] = weightSum*2
+    
+    return (l, n)
 
 def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y:int):
     xv: list = np.linspace(0,2*x,2*x+1)
@@ -187,7 +226,7 @@ def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y:int):
                     xp.append(j)
                     yp.append(i)
                     
-    H,X,Y = np.histogram2d(x = xp, y = yp, bins=(xv,yh))
+    H, X, Y = np.histogram2d(x = xp, y = yp, bins=(xv,yh))
     ax.pcolormesh(X,Y,H.T, cmap="viridis")
     ax.axis("square")
     ax.set_title(title, fontweight='bold')
@@ -199,11 +238,16 @@ def main():
 
     # Note that maze will be 2*x wide and 2*y height
     # IMPORTANT x*y should be not too much, because can be problem with shell and program execution (recursion)
-    x: int = 15
-    y: int = 15
+    x: int = 20
+    y: int = 20
 
-    x = max(x,3)
-    y = max(y,3)
+    x = max(x,5)
+    y = max(y,5)
+
+    weightCenter: int = 3
+    weightOutsideCenter: int = 100
+
+    weightSum: int = weightCenter+weightOutsideCenter
     
     sys.setrecursionlimit(4*x*y)
 
@@ -211,15 +255,15 @@ def main():
     nR: int = 0
     maze            = genMaze(x, y)
     mazeR           = randMaze(maze, x, y, 0.5)
-    mazeRB          = bushyMaze(mazeR, x, y)
+    mazeRB          = bushyMaze(mazeR, x, y, weightCenter, weightOutsideCenter)
     waterSplashed   = waterSplash(maze, x, y)
     waterSplashedR  = waterSplash(mazeR, x, y)
     waterSplashedRB = waterSplash(mazeRB, x, y)
     solution,  n    = solveMaze(maze, waterSplashed, x, y)
     solutionR, nR   = solveMaze(mazeR, waterSplashedR, x, y)
-    solutionRB, nRB = solveMaze(mazeRB, waterSplashedRB, x, y)
+    solutionRB, nRB = solveMaze(mazeRB, waterSplashedRB, x, y, weightSum)
 
-    fig,ax=plt.subplots(3,3,figsize=(50,50))
+    fig, ax = plt.subplots(3,3,figsize=(50,50))
 
     showMaze(ax[0,0], "Maze.", maze, x, y)
     showMaze(ax[0,1], "Randomized maze.", mazeR, x, y)
