@@ -120,31 +120,48 @@ def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int) -> tuple:
         if w == y*2-2 and z == x*2-2:
             l[w][z] = -1
             return True
+        
+        r = []
         if w+1 < 2*y-1:
-            if l[w+1][z] > 0:
-                tree.append(Node((w+1,z,parent.name[2] + l[w+1][z]), parent = parent))
-                l[w+1][z] = -1
-                if solve(w+1,z,tree[-1]):
-                    return True
+            r.append(("u", waterSplashed[w+1][z]))
         if w-1 >= 0:
-            if l[w-1][z] > 0:
-                tree.append(Node((w-1,z,parent.name[2] + l[w-1][z]), parent = parent))
-                l[w-1][z] = -1
-                if solve(w-1,z,tree[-1]):
-                    return True
+            r.append(("d", waterSplashed[w-1][z]))
         if z+1 < 2*x-1:
-            if l[w][z+1] > 0:
-                tree.append(Node((w,z+1,parent.name[2] + l[w][z+1]), parent = parent))
-                l[w][z+1] = -1
-                if solve(w,z+1,tree[-1]):
-                    return True
+            r.append(("r", waterSplashed[w][z+1]))
         if z-1 >= 0:
-            if l[w][z-1] > 0:
-                tree.append(Node((w,z-1,parent.name[2] + l[w][z-1]), parent = parent))
-                l[w][z-1] = -1
-                if solve(w,z-1,tree[-1]):
-                    return True
-                
+            r.append(("l", waterSplashed[w][z-1]))
+
+        r: list = sorted(r, key=itemgetter(1))
+        index: int = 0
+        
+        while index < len(r):
+            if r[index][0] == "u":
+                if l[w+1][z] > 0:
+                    tree.append(Node((w+1,z,parent.name[2] + l[w+1][z]), parent = parent))
+                    l[w+1][z] = -1
+                    if solve(w+1,z,tree[-1]):
+                        return True
+            elif r[index][0] == "d":
+                if l[w-1][z] > 0:
+                    tree.append(Node((w-1,z,parent.name[2] + l[w-1][z]), parent = parent))
+                    l[w-1][z] = -1
+                    if solve(w-1,z,tree[-1]):
+                        return True
+            elif r[index][0] == "r":
+                if l[w][z+1] > 0:
+                    tree.append(Node((w,z+1,parent.name[2] + l[w][z+1]), parent = parent))
+                    l[w][z+1] = -1
+                    if solve(w,z+1,tree[-1]):
+                        return True
+            else:
+                if l[w][z-1] > 0:
+                    tree.append(Node((w,z-1,parent.name[2] + l[w][z-1]), parent = parent))
+                    l[w][z-1] = -1
+                    if solve(w,z-1,tree[-1]):
+                        return True
+            index += 1
+        return False
+                    
     solve(0,0,tree[0])
     for pre, fill, node in RenderTree(tree[0]):
         print("%s%s" % (pre, node.name))
@@ -182,8 +199,8 @@ def main():
 
     # Note that maze will be 2*x wide and 2*y height
     # IMPORTANT x*y should be not too much, because can be problem with shell and program execution (recursion)
-    x: int = 5
-    y: int = 5
+    x: int = 15
+    y: int = 15
 
     x = max(x,3)
     y = max(y,3)
