@@ -128,6 +128,14 @@ def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int, weightSum: 
             minIndex: int = leavesName.index(minValue)
             
             node: Node = leaves[minIndex]
+
+            parents: list = [parent for parent in node.iter_path_reverse()]
+            parentsName: list = [parent.name for parent in parents]
+
+            minValue = min(parentsName, key=itemgetter(2))
+            minIndex = parentsName.index(minValue)
+
+            node = parents[minIndex]
             
             w: int = node.name[0]
             z: int = node.name[1]
@@ -152,8 +160,11 @@ def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int, weightSum: 
                     r.append(("l", waterSplashed[w][z-1] + cost + l[w][z-1]))
 
             if len(r) == 0:
-                tree.remove(node)
-                node.parent = None
+                if node.is_leaf:
+                    tree.remove(node)
+                    node.parent = None
+                else:
+                    tree[tree.index(node)].name[2] = np.Inf
                 return findMinimumNodeMove()
 
             return [r, w, z, value, cost, node]
@@ -202,7 +213,6 @@ def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int, weightSum: 
             markRoad(node.parent)
 
     markRoad(tree[-1])
-
     
     for i in range(2*y-1):
         for j in range(2*x-1):
@@ -238,8 +248,8 @@ def main():
 
     # Note that maze will be 2*x wide and 2*y height
     # IMPORTANT x*y should be not too much, because can be problem with shell and program execution (recursion)
-    x: int = 20
-    y: int = 20
+    x: int = 50
+    y: int = 50
 
     x = max(x,5)
     y = max(y,5)
@@ -254,7 +264,7 @@ def main():
     n: int = 0
     nR: int = 0
     maze            = genMaze(x, y)
-    mazeR           = randMaze(maze, x, y, 0.5)
+    mazeR           = randMaze(maze, x, y, 0.2)
     mazeRB          = bushyMaze(mazeR, x, y, weightCenter, weightOutsideCenter)
     waterSplashed   = waterSplash(maze, x, y)
     waterSplashedR  = waterSplash(mazeR, x, y)
