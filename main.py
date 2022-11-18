@@ -286,6 +286,7 @@ def main():
 
     n: int = 0
     nR: int = 0
+    nRB: int = 0
     maze            = genMaze(x, y)
     mazeR           = randMaze(maze, x, y, 0.2)
     mazeRB          = bushyMaze(mazeR, x, y, weightCenter, weightOutsideCenter)
