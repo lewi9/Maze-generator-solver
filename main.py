@@ -83,8 +83,8 @@ def bushyMaze(maze: np.array, x: int, y:int, weightCenter: int, weightOutsideCen
             if l[i][j] > 0:
                 l[i][j] = weightCenter
                 
-    l[0][0] = (weightCenter + weightOutsideCenter) *2
-    l[2*y-2][2*x-2] = (weightCenter + weightOutsideCenter)*2
+    l[0][0] = (weightCenter + weightOutsideCenter) * 2
+    l[2*y-2][2*x-2] = (weightCenter + weightOutsideCenter) * 2
     return l
             
 def waterSplash(maze: np.array, x: int, y: int) -> np.array:
@@ -223,7 +223,7 @@ def solveMaze(maze: np.array, waterSplashed: np.array, x:int, y:int, weightSum: 
     
     return (l, n)
 
-def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y:int):
+def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y: int, weightCenter: int = 1, weightOutsideCenter: int = 1, flagHeuristic: bool = False) -> None:
     xv: list = np.linspace(0,2*x,2*x+1)
     yh: list = np.linspace(0,2*y,2*y+1)
     xp: list = []
@@ -232,10 +232,33 @@ def showMaze(ax : plt.axes, title: str, maze: np.array, x: int, y:int):
     for i in range(2*y-1):
         for j in range(2*x-1):
             if maze[i][j] > 0:
-                for k in range(int(maze[i][j])):
-                    xp.append(j)
-                    yp.append(i)
+                if not flagHeuristic:
                     
+                    if maze[i][j] == 1:
+                        xp.append(j)
+                        yp.append(i)
+                    elif maze[i][j] == 2:
+                        for k in range(2):
+                            xp.append(j)
+                            yp.append(i)
+                    elif maze[i][j] == min(weightCenter,weightOutsideCenter):
+                        for k in range(2):
+                            xp.append(j)
+                            yp.append(i)
+                    elif maze[i][j] == max(weightCenter,weightOutsideCenter):
+                        for k in range(3):
+                            xp.append(j)
+                            yp.append(i)
+                    elif maze[i][j] == (weightCenter+weightOutsideCenter)*2:
+                        for k in range(4):
+                            xp.append(j)
+                            yp.append(i)
+                    
+                else:
+                    for k in range(int(maze[i][j])):
+                        xp.append(j)
+                        yp.append(i)
+                            
     H, X, Y = np.histogram2d(x = xp, y = yp, bins=(xv,yh))
     ax.pcolormesh(X,Y,H.T, cmap="viridis")
     ax.axis("square")
@@ -255,7 +278,7 @@ def main():
     y = max(y,5)
 
     weightCenter: int = 3
-    weightOutsideCenter: int = 100
+    weightOutsideCenter: int = 2
 
     weightSum: int = weightCenter+weightOutsideCenter
     
@@ -277,13 +300,13 @@ def main():
 
     showMaze(ax[0,0], "Maze.", maze, x, y)
     showMaze(ax[0,1], "Randomized maze.", mazeR, x, y)
-    showMaze(ax[0,2], "Randomized bushy maze. Walking by bush costs more.", mazeRB, x, y)
-    showMaze(ax[1,0], "Hueristic function (water splash).", waterSplashed, x, y)
-    showMaze(ax[1,1], "Hueristic function (water splash)\nof randomized maze.", waterSplashedR, x, y)
-    showMaze(ax[1,2], "Hueristic function (water splash)\nof randomized bushy maze.", waterSplashedRB, x, y)
+    showMaze(ax[0,2], "Randomized bushy maze. Walking by bush costs more.", mazeRB, x, y, weightCenter, weightOutsideCenter )
+    showMaze(ax[1,0], "Hueristic function (water splash).", waterSplashed, x, y, flagHeuristic = True)
+    showMaze(ax[1,1], "Hueristic function (water splash)\nof randomized maze.", waterSplashedR, x, y, flagHeuristic = True)
+    showMaze(ax[1,2], "Hueristic function (water splash)\nof randomized bushy maze.", waterSplashedRB, x, y, flagHeuristic = True)
     showMaze(ax[2,0], "Solution of maze. Cost: " + str(n), solution, x, y)
     showMaze(ax[2,1], "Solution of randomized maze. Cost: " + str(nR), solutionR, x, y)
-    showMaze(ax[2,2], "Solution of randomized bushy maze. Cost: " + str(nRB), solutionRB, x, y)
+    showMaze(ax[2,2], "Solution of randomized bushy maze. Cost: " + str(nRB), solutionRB, x, y, weightCenter, weightOutsideCenter)
 
     fig.suptitle("Maze generator and solver. Start is in bottom-left corner, end is in top-right.", fontsize=18, fontweight='bold')
     
